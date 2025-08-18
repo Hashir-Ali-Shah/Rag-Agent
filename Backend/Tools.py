@@ -9,11 +9,7 @@ class MathTools:
         """Add two numbers."""
         return float(a) + float(b)
 
-    @staticmethod
-    @tool
-    def get_length(text: str) -> int:
-        """Return the length of the given text."""
-        return len(text)
+
 
     @staticmethod
     @tool
@@ -42,7 +38,7 @@ class MathTools:
     def final_answer(answer: str) -> str:
         """Use this tool to give the final answer to the user. 
         Always call this at the end instead of repeating other tools."""
-        return f"the answer is {answer}"
+        return answer
     
     @classmethod
     def get_tools(cls):

@@ -8,8 +8,6 @@ load_dotenv()
 API_KEY = os.getenv("GROQ_API_KEY")
 
 
-
-
 from langchain_groq import ChatGroq
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -21,6 +19,7 @@ from langchain_core.prompts import (
 )
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain.agents import create_tool_calling_agent, AgentExecutor
+from langchain.memory import ConversationBufferWindowMemory
 from Tools import MathTools
 
 
@@ -37,21 +36,21 @@ class ChatBot(MathTools):
         )
     
         self.chat_prompt = self._build_prompt()
-        self.history = []
+        self.memory = ConversationBufferWindowMemory(k=3, return_messages=True,memory_key="chat_history")
         agent=create_tool_calling_agent(self.llm,self.tools,self.chat_prompt)
-        agent_executor=AgentExecutor(agent=agent,tools=self.tools,verbose=True)
+        agent_executor=AgentExecutor(agent=agent,tools=self.tools,verbose=True,memory=self.memory)
         self.executor=agent_executor
 
     def _build_prompt(self):
         # System message: instructions for the LLM
         system_prompt = SystemMessagePromptTemplate.from_template(
             "You are a helpful AI assistant.\n"
-            "You have access to some mathematical tools.\n"
-            "make one tool call per operation\n"
-            "Make sure you pass the correct json input to the function\n"
-            "Always use the 'final_answer' tool exactly once at the end to provide the final result.\n"
-            "Do not call any other tool after using 'final_answer'.\n"
-            "pass the latest output to final answer tool and take its output and end the chain"
+        "You're a helpful assistant. When answering a user's question "
+        "you should first use one of the tools provided. After using a "
+        "tool the tool output will be provided in the "
+        "'scratchpad' below. If you have an answer in the "
+        "scratchpad you should  use final answer tool to answer the user "
+        "Final answer tool should be called at the end of the conversation only once"
         )
 
         # Optional examples (few-shot)
@@ -63,6 +62,10 @@ class ChatBot(MathTools):
             {
                 "input": "What is 10 * 5?",
                 "output": "Use multiply_numbers tool to compute 10 * 5, then call the final answer tool with output."
+            },
+                        {
+                "input": "tell me about langchain?",
+                "output": "no relevant tools available for this question, so using final answer tool to answer the user."
             },
         ]
 
@@ -86,9 +89,9 @@ class ChatBot(MathTools):
         # Combine everything
         return ChatPromptTemplate.from_messages([
             system_prompt,
-            # few_shot_prompt,
+            few_shot_prompt,
             history_intro,
-            MessagesPlaceholder(variable_name="history"),
+            MessagesPlaceholder(variable_name="chat_history"),
             MessagesPlaceholder(variable_name="agent_scratchpad"),
             user_prompt,
         ])
@@ -96,14 +99,10 @@ class ChatBot(MathTools):
 
     def ask(self, query: str) -> str:
         """Send a query and return the final agent output."""
-        result = self.executor.invoke({"question": query, "history": self.history})
-        output = result["output"]
-
-        self.history.append(HumanMessage(content=query))
-        self.history.append(AIMessage(content=output))
-
-        return output
+        result = self.executor.invoke({"question": query})
+        return result["output"]
 
 if __name__=="__main__":
     bot=ChatBot()
-    print(bot.ask("what model are you"))
+    print(bot.ask("my name is hashir"))
+    print(bot.ask("What is my name?"))
