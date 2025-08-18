@@ -20,89 +20,68 @@ from langchain_core.prompts import (
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain.memory import ConversationBufferWindowMemory
+from langchain_core.runnables import ConfigurableFieldSpec
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+from SessionManager import SessionMemoryManager
 from Tools import MathTools
+from History import BufferWindowMessageHistory
+from Prompts import ChatBotPrompts
 
 
 
 
-class ChatBot(MathTools):
+class ChatBot():
     def __init__(self, temperature: float = 0.7):
-        self.tools=self.get_tools()
+        self.tools=MathTools.get_tools()
         self.llm = ChatGroq(
             model="openai/gpt-oss-120b",
             temperature=temperature,
             api_key=API_KEY,
             streaming=True,
         )
-    
-        self.chat_prompt = self._build_prompt()
-        self.memory = ConversationBufferWindowMemory(k=3, return_messages=True,memory_key="chat_history")
+        self.session=SessionMemoryManager
+        self.chat_prompt = ChatBotPrompts.build_prompt()
+        # self.memory = ConversationBufferWindowMemory(k=3, return_messages=True,memory_key="chat_history")
         agent=create_tool_calling_agent(self.llm,self.tools,self.chat_prompt)
-        agent_executor=AgentExecutor(agent=agent,tools=self.tools,verbose=True,memory=self.memory)
+        agent_executor=AgentExecutor(agent=agent,tools=self.tools,verbose=True)
         self.executor=agent_executor
+        self.pipeline=self.pipeline_config()
 
-    def _build_prompt(self):
-        # System message: instructions for the LLM
-        system_prompt = SystemMessagePromptTemplate.from_template(
-            "You are a helpful AI assistant.\n"
-        "You're a helpful assistant. When answering a user's question "
-        "you should first use one of the tools provided. After using a "
-        "tool the tool output will be provided in the "
-        "'scratchpad' below. If you have an answer in the "
-        "scratchpad you should  use final answer tool to answer the user "
-        "Final answer tool should be called at the end of the conversation only once"
-        )
-
-        # Optional examples (few-shot)
-        examples = [
-            {
-                "input": "What is 2 + 3?",
-                "output": "Use add_numbers tool to compute 2 + 3, then call the  the final answer tool with output."
-            },
-            {
-                "input": "What is 10 * 5?",
-                "output": "Use multiply_numbers tool to compute 10 * 5, then call the final answer tool with output."
-            },
-                        {
-                "input": "tell me about langchain?",
-                "output": "no relevant tools available for this question, so using final answer tool to answer the user."
-            },
+    
+    def pipeline_config(self):
+        pipeline = RunnableWithMessageHistory(
+        runnable=self.executor,                  # your AgentExecutor
+        get_session_history=self.session.get_session,  # session-based memory factory
+        input_messages_key="question",           # matches prompt variable
+        history_messages_key="chat_history",     # matches placeholder in prompt
+        history_factory_config=[
+            ConfigurableFieldSpec(
+                id="session_id",
+                annotation=str,
+                name="Session ID",
+                description="The session ID to use for chat history",
+                default="id_default",
+            ),
+            ConfigurableFieldSpec(
+                id="k",
+                annotation=int,
+                name="k",
+                description="Number of messages to keep in memory",
+                default=3,
+            )
         ]
+    )
+        return pipeline
 
-        # Few-shot example template
-        example_prompt = ChatPromptTemplate.from_messages([
-            HumanMessagePromptTemplate.from_template("{input}"),
-            AIMessagePromptTemplate.from_template("{output}")
-        ])
-
-        few_shot_prompt = FewShotChatMessagePromptTemplate(
-            example_prompt=example_prompt,
-            examples=examples
-        )
-
-        # User prompt
-        user_prompt = HumanMessagePromptTemplate.from_template("{question}")
-
-        # Chat history placeholder
-        history_intro = SystemMessagePromptTemplate.from_template("Below is the chat history:")
-
-        # Combine everything
-        return ChatPromptTemplate.from_messages([
-            system_prompt,
-            few_shot_prompt,
-            history_intro,
-            MessagesPlaceholder(variable_name="chat_history"),
-            MessagesPlaceholder(variable_name="agent_scratchpad"),
-            user_prompt,
-        ])
-
-
-    def ask(self, query: str) -> str:
+    def ask(self, query: str,session_id:str="default",k:int=4) -> str:
         """Send a query and return the final agent output."""
-        result = self.executor.invoke({"question": query})
+ 
+        result = self.pipeline.invoke({"question": query},config={"configurable":{"session_id": session_id,"k":k}} )
         return result["output"]
 
 if __name__=="__main__":
     bot=ChatBot()
     print(bot.ask("my name is hashir"))
-    print(bot.ask("What is my name?"))
+    print(bot.ask("what is my name?"))
+    print(bot.ask('what is my name ',"123"))
