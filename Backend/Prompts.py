@@ -18,6 +18,7 @@ class ChatBotPrompts:
             "'scratchpad' below. If you have an answer in the "
             "scratchpad you should use final answer tool to answer the user. "
             "Final answer tool should be called at the end of the conversation only once."
+            "use the context provided to answer the questions if possible.\n"
         )
 
     @staticmethod
@@ -49,7 +50,7 @@ class ChatBotPrompts:
 
     @staticmethod
     def user_prompt() -> HumanMessagePromptTemplate:
-        return HumanMessagePromptTemplate.from_template("{question}")
+        return HumanMessagePromptTemplate.from_template("{question} \n Use the following for context {context}")
 
     @staticmethod
     def history_intro() -> SystemMessagePromptTemplate:
