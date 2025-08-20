@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-
+import asyncio
 # Load variables from .env file
 load_dotenv()
 
@@ -68,11 +68,13 @@ class ChatBot():
     async def ask(self, query: str,session_id:str="default",k:int=4) -> str:
         """Send a query and return the final agent output."""
  
-        result = self.pipeline.invoke({"question": query},config={"configurable":{"session_id": session_id,"k":k}} )
+        result =await  self.pipeline.ainvoke({"question": query},config={"configurable":{"session_id": session_id,"k":k}} )
         return result["output"]
 
-if __name__=="__main__":
-    bot=ChatBot()
-    print(bot.ask("what is my name ",session_id="test_session",k=3))
+if __name__ == "__main__":
+    bot = ChatBot()
+    result = asyncio.run(bot.ask("solve 2+2 use final answer tool in the end ", session_id="test_session", k=3))
+    print(result)
+
 
 

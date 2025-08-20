@@ -4,7 +4,7 @@ class SessionMemoryManager:
     session_memory_map = {}  # class-level
 
     @staticmethod
-    async def get_session(session_id: str, k: int = 3):
+    def get_session(session_id: str, k: int = 3):
         if session_id not in SessionMemoryManager.session_memory_map:
             SessionMemoryManager.session_memory_map[session_id] = BufferWindowMessageHistory(k=k)
         return SessionMemoryManager.session_memory_map[session_id]
