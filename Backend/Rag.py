@@ -39,10 +39,10 @@ class RAGPipeline:
         # Use DocumentReader to read the file
         self.ingest(self.document_reader.read(file_path))
 
-    def ingest(self, raw_texts: list[str]) -> None:
+    def ingest(self, raw_texts: list[str] ,save:bool=False) -> None:
         """Takes list of raw texts, splits into chunks, and stores in FAISS vectorstore."""
 
-        if os.path.exists("faiss_index") and not self.vectorstore:
+        if os.path.exists("faiss_index") and save:
             self.load("faiss_index")
 
         docs = [Document(page_content=t) for t in raw_texts]
@@ -51,7 +51,8 @@ class RAGPipeline:
             self.vectorstore.add_documents(chunks)
         else:
             self.vectorstore = FAISS.from_documents(chunks, self.embedding_model)
-        self.save("faiss_index")
+        if save:
+            self.save("faiss_index")
 
     def save(self, path: str = "faiss_index") -> None:
         """Save FAISS index to disk."""
@@ -73,7 +74,7 @@ class RAGPipeline:
             raise ValueError("Vectorstore not initialized. Run ingest() or load() first.")
         return self.vectorstore.similarity_search(question, k=k)
 
-    def _retrieve_context(self, inputs: dict, k: int = 3) -> dict:
+    async def _retrieve_context(self, inputs: dict, k: int = 3) -> dict:
         """For pipeline: takes {'question': str}, injects retrieved context."""
         if not self.vectorstore:
             self.load()

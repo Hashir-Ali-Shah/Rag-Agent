@@ -1,25 +1,24 @@
-from langchain_core.tools import tool,BaseTool
+from langchain_core.tools import tool, BaseTool
 import inspect  
+
 class MathTools:
     """Collection of basic math tools."""
 
     @staticmethod
     @tool
-    def add_numbers(a: float, b: float) -> float:
+    async def add_numbers(a: float, b: float) -> float:
         """Add two numbers."""
         return float(a) + float(b)
 
-
-
     @staticmethod
     @tool
-    def multiply_numbers(a: float, b: float) -> float:
+    async def multiply_numbers(a: float, b: float) -> float:
         """Multiply two numbers."""
         return float(a) * float(b)
 
     @staticmethod
     @tool
-    def divide_numbers(a: float, b: float) -> float:
+    async def divide_numbers(a: float, b: float) -> float:
         """Divide two numbers. Raises error if b is zero."""
         a = float(a)
         b = float(b)
@@ -29,13 +28,13 @@ class MathTools:
 
     @staticmethod
     @tool
-    def subtract_numbers(a: float, b: float) -> float:
+    async def subtract_numbers(a: float, b: float) -> float:
         """Subtract second number from the first number."""
         return float(a) - float(b)
 
     @staticmethod
     @tool(return_direct=True)
-    def final_answer(answer: str) -> str:
+    async def final_answer(answer: str) -> str:
         """Use this tool to give the final answer to the user. 
         Always call this at the end instead of repeating other tools."""
         return answer
@@ -50,7 +49,6 @@ class MathTools:
         return tools
 
 if __name__ == "__main__":
-
     math_tools = MathTools()
     print("hello")
-    print(MathTools.get_tools())  
+    print(MathTools.get_tools())

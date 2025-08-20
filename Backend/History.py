@@ -12,6 +12,15 @@ class BufferWindowMessageHistory(BaseChatMessageHistory):
         self.messages.extend(messages)
         self.messages = self.messages[-self.k:]
 
+    async def aadd_messages(self, messages: list[BaseMessage]) -> None:
+        """Async version: Add new messages and keep only the last `k`."""
+        self.messages.extend(messages)
+        self.messages = self.messages[-self.k:]
+
     def clear(self) -> None:
         """Clear the history."""
+        self.messages = []
+
+    async def aclear(self) -> None:
+        """Async version: Clear the history."""
         self.messages = []

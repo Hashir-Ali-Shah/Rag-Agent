@@ -65,7 +65,7 @@ class ChatBot():
     )
         return pipeline
 
-    def ask(self, query: str,session_id:str="default",k:int=4) -> str:
+    async def ask(self, query: str,session_id:str="default",k:int=4) -> str:
         """Send a query and return the final agent output."""
  
         result = self.pipeline.invoke({"question": query},config={"configurable":{"session_id": session_id,"k":k}} )
