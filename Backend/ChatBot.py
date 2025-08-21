@@ -18,24 +18,27 @@ from SessionManager import SessionMemoryManager
 from Tools import MathTools
 from Prompts import ChatBotPrompts
 from Rag import RAGPipeline
+from Streaming import QueueCallbackHandler
 
 
 
 
 class ChatBot():
     def __init__(self, temperature: float = 0.7):
+        self.callback_handler = QueueCallbackHandler()
         self.tools=MathTools.get_tools()
         self.llm = ChatGroq(
             model="openai/gpt-oss-120b",
             temperature=temperature,
             api_key=API_KEY,
             streaming=True,
+            callbacks=[self.callback_handler],
         )
         self.session=SessionMemoryManager
         self.chat_prompt = ChatBotPrompts.build_prompt()
         self.rag_pipeline = RAGPipeline()
         agent=create_tool_calling_agent(self.llm,self.tools,self.chat_prompt)
-        agent_executor=AgentExecutor(agent=agent,tools=self.tools,verbose=True)
+        agent_executor=AgentExecutor(agent=agent,tools=self.tools,verbose=False,callbacks=[self.callback_handler])
         self.executor=agent_executor
         self.pipeline=self.pipeline_config()
 
@@ -70,11 +73,39 @@ class ChatBot():
  
         result =await  self.pipeline.ainvoke({"question": query},config={"configurable":{"session_id": session_id,"k":k}} )
         return result["output"]
+    
+    async def ask_stream(self, query: str, session_id: str = "default", k: int = 4):
+        self.callback_handler.clear()
+        async for event in self.pipeline.astream_events(
+            {"question": query},
+            config={"configurable": {"session_id": session_id, "k": k}},
+            version="v1"
+        ):
+            if event["event"] == "on_chat_model_stream":
+                chunk = event["data"]["chunk"]
+                if chunk and chunk.content:
+
+                    if isinstance(chunk.content, list):
+                        yield "".join(chunk.content)
+                    else:
+                        yield chunk.content
+
+
+
+
 
 if __name__ == "__main__":
-    bot = ChatBot()
-    result = asyncio.run(bot.ask("solve 2+2 use final answer tool in the end ", session_id="test_session", k=3))
-    print(result)
+    import asyncio
 
+    
+    async def test_streaming():
+        bot = ChatBot()
+        print("Streaming result:")
+        async for token in bot.ask_stream("write me a story", session_id="test_session", k=3):
+            print(token, end="", flush=True)
+        print()  # New line at end
+    # Test direct LLM streaming (bypass agent)
+    
+    asyncio.run(test_streaming())
 
 

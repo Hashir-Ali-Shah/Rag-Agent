@@ -33,7 +33,7 @@ class MathTools:
         return float(a) - float(b)
 
     @staticmethod
-    @tool(return_direct=True)
+    @tool
     async def final_answer(answer: str) -> str:
         """Use this tool to give the final answer to the user. 
         Always call this at the end instead of repeating other tools."""
