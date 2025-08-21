@@ -254,19 +254,23 @@ class DocumentReader:
 
 # Example usage and testing
 if __name__ == "__main__":
+    from pathlib import Path
+
+    # Initialize reader
     reader = DocumentReader()
     print(f"Supported extensions: {reader.SUPPORTED_EXTENSIONS}")
-    
-    # Example usage with file path:
-    # texts = reader.read("example.pdf")
-    
-    # Example usage with file object from frontend:
-    # with open("example.pdf", "rb") as file_obj:
-    #     texts = reader.read(file_obj, filename="example.pdf")
-    
-    # Example with uploaded file from web form:
-    # uploaded_file = request.files['document']  # Flask example
-    # texts = reader.read(uploaded_file, filename=uploaded_file.filename)
-    
-    # for i, text in enumerate(texts):
-    #     print(f"Chunk {i+1}: {text[:100]}...")
+
+    # Your file path
+    file_path = r"D:\resume\current.pdf"  # replace with your file
+
+    # Open file as a file object
+    ext = Path(file_path).suffix.lower()
+
+    mode = "rb" if ext in [".pdf", ".docx"] else "r"  # PDF/DOCX need binary mode
+
+    with open(file_path, mode) as file_obj:
+        texts = reader.read(file_obj, filename=Path(file_path).name)
+
+    # Print results
+    for i, text in enumerate(texts):
+        print(f"Chunk {i+1} ({len(text)} chars):\n{text}\n")

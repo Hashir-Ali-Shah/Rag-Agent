@@ -19,13 +19,18 @@ from Tools import MathTools
 from Prompts import ChatBotPrompts
 from Rag import RAGPipeline
 from Streaming import QueueCallbackHandler
+from DocReader import DocumentReader
 
+
+from typing import List, Optional, Union, BinaryIO, TextIO
+from pathlib import Path
 
 
 
 class ChatBot():
     def __init__(self, temperature: float = 0.7):
         self.callback_handler = QueueCallbackHandler()
+        self.document_reader = DocumentReader()
         self.tools=MathTools.get_tools()
         self.llm = ChatGroq(
             model="openai/gpt-oss-120b",
@@ -41,6 +46,20 @@ class ChatBot():
         agent_executor=AgentExecutor(agent=agent,tools=self.tools,verbose=False,callbacks=[self.callback_handler])
         self.executor=agent_executor
         self.pipeline=self.pipeline_config()
+    
+    def read(self, file_input: Union[str, BinaryIO, TextIO], 
+            filename: Optional[str] = None, ) -> list[str]:
+        """Read document from path and return list of text chunks."""
+        file_path = os.path.abspath(file_input) if isinstance(file_input, str) else file_input
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}") 
+        if filename:
+            self.rag_pipeline.read(self.document_reader.read(file_path, filename))
+        else:
+            self.rag_pipeline.read(self.document_reader.read(file_path))
+
+            # Use DocumentReader to read the file
+        
 
     
     def pipeline_config(self):
