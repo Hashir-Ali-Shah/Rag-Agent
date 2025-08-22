@@ -54,16 +54,17 @@ class DocumentReader:
             ValueError: If file type is unsupported or library unavailable
             Exception: For other reading errors
         """
+        # return self._read_from_file_object(file_input, filename, encoding)
         
         # Handle file path input
-        if filename:
-            return self._read_from_path(file_input, encoding)
-        
-        # Handle file object input
-        else:
-            if not filename:
-                raise ValueError("filename parameter is required when using file objects")
-            return self._read_from_file_object(file_input, filename, encoding)
+ 
+        if isinstance(file_input, (str, Path)):
+            return self._read_from_path(str(file_input), encoding)
+
+        if not filename:
+            raise ValueError("filename parameter is required when using file objects")
+
+        return self._read_from_file_object(file_input, filename, encoding)
     
     def _read_from_path(self, file_path: str, encoding: str) -> List[str]:
         """Read from file path (original functionality)."""

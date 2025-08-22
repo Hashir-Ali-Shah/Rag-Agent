@@ -144,7 +144,8 @@ export default function Chat({ chat, updateMessages }) {
       <div ref={messageListRef} className="flex-1 overflow-y-auto p-4 space-y-2 flex flex-col">
         {!chat.messages || chat.messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="p-6 rounded-md bg-gray-100 text-black text-lg font-semibold max-w-lg text-center">
+           <div className="p-6 rounded-md bg-gray-100 text-black text-3xl font-semibold max-w-lg text-center">
+
               Welcome! How can I help you today?
             </div>
           </div>
@@ -156,7 +157,7 @@ export default function Chat({ chat, updateMessages }) {
                 msg.type === "user" ? "self-end bg-green-100 text-black" : "self-start bg-gray-100 text-black"
               }`}
             >
-              {msg.text || (loading && msg.type === "assistant" ? <div className="w-50 h-10 bg-gray-400 rounded animate-pulse"></div>
+              {msg.text || (loading && msg.type === "assistant" ? <div className="w-60 h-10 bg-gray-400 rounded animate-pulse"></div>
  : "")}
             </div>
           ))

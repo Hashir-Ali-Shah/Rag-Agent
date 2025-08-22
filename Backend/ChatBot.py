@@ -33,7 +33,7 @@ class ChatBot():
         self.document_reader = DocumentReader()
         self.tools=MathTools.get_tools()
         self.llm = ChatGroq(
-            model="openai/gpt-oss-120b",
+            model="openai/gpt-oss-20b",
             temperature=temperature,
             api_key=API_KEY,
             streaming=True,
@@ -55,7 +55,7 @@ class ChatBot():
             if not os.path.exists(file_path):
                 raise FileNotFoundError(f"File not found: {file_path}") 
         if filename:
-            self.rag_pipeline.read(self.document_reader.read(file_path, filename))
+            self.rag_pipeline.ingest(self.document_reader.read(file_path, filename))
         else:
             self.rag_pipeline.read(self.document_reader.read(file_path))
 
