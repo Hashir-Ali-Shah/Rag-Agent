@@ -3,7 +3,7 @@ from typing import List, Optional, Union, BinaryIO, TextIO
 import logging
 import io
 
-# Optional imports with error handling
+
 try:
     import docx
     DOCX_AVAILABLE = True
@@ -157,27 +157,24 @@ class DocumentReader:
         doc = docx.Document(str(path))
         return self._extract_docx_text(doc)
     
-    # File object-based reading methods (new)
+
     def _read_txt_from_object(self, file_obj, encoding: str) -> List[str]:
         """Read text from file object."""
         try:
-            # Reset file pointer to beginning
+      
             if hasattr(file_obj, 'seek'):
                 file_obj.seek(0)
             
-            # Handle different file object types
+     
             if hasattr(file_obj, 'read'):
                 if isinstance(file_obj, io.TextIOBase):
-                    # Text file object
                     content = file_obj.read()
                 else:
-                    # Binary file object
                     content = file_obj.read()
                     if isinstance(content, bytes):
                         try:
                             content = content.decode(encoding)
                         except UnicodeDecodeError:
-                            # Try fallback encodings
                             for fallback_encoding in ['latin-1', 'cp1252', 'utf-16']:
                                 try:
                                     content = content.decode(fallback_encoding)
@@ -201,11 +198,9 @@ class DocumentReader:
             raise ValueError("PDF support requires PyPDF2 library")
         
         try:
-            # Reset file pointer to beginning
             if hasattr(file_obj, 'seek'):
                 file_obj.seek(0)
             
-            # PyPDF2 can handle file-like objects directly
             reader = PdfReader(file_obj)
             return self._extract_pdf_text(reader)
             
@@ -218,18 +213,15 @@ class DocumentReader:
             raise ValueError("DOCX support requires python-docx library")
         
         try:
-            # Reset file pointer to beginning
             if hasattr(file_obj, 'seek'):
                 file_obj.seek(0)
             
-            # python-docx can handle file-like objects directly
             doc = docx.Document(file_obj)
             return self._extract_docx_text(doc)
             
         except Exception as e:
             raise Exception(f"Failed to read DOCX from file object: {e}")
     
-    # Helper methods for text extraction
     def _extract_pdf_text(self, reader) -> List[str]:
         """Extract text from PDF reader object."""
         texts = []
@@ -251,25 +243,21 @@ class DocumentReader:
                 texts.append(para.text.strip())
         return texts
 
-# Example usage and testing
 if __name__ == "__main__":
     from pathlib import Path
 
-    # Initialize reader
     reader = DocumentReader()
     print(f"Supported extensions: {reader.SUPPORTED_EXTENSIONS}")
 
-    # Your file path
-    file_path = r"D:\resume\current.pdf"  # replace with your file
+    file_path = r"D:\resume\current.pdf" 
 
-    # Open file as a file object
     ext = Path(file_path).suffix.lower()
 
-    mode = "rb" if ext in [".pdf", ".docx"] else "r"  # PDF/DOCX need binary mode
+    mode = "rb" if ext in [".pdf", ".docx"] else "r"
 
     with open(file_path, mode) as file_obj:
         texts = reader.read(file_obj, filename=Path(file_path).name)
 
-    # Print results
+    
     for i, text in enumerate(texts):
         print(f"Chunk {i+1} ({len(text)} chars):\n{text}\n")
