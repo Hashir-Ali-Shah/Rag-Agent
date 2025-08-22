@@ -56,7 +56,7 @@ class DocumentReader:
         """
         
         # Handle file path input
-        if isinstance(file_input, str):
+        if filename:
             return self._read_from_path(file_input, encoding)
         
         # Handle file object input

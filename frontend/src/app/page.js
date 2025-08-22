@@ -16,9 +16,18 @@ export default function Page() {
     setActiveChatId(newChat.id);
   };
 
-  const updateMessages = (chatId, messages) => {
+  const updateMessages = (chatId, messagesOrUpdater) => {
     setChats((prev) =>
-      prev.map((c) => (c.id === chatId ? { ...c, messages } : c))
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const newMessages =
+            typeof messagesOrUpdater === "function"
+              ? messagesOrUpdater(c.messages)
+              : messagesOrUpdater;
+          return { ...c, messages: newMessages };
+        }
+        return c;
+      })
     );
   };
 

@@ -89,9 +89,7 @@ if __name__ == "__main__":
     print("RAG pipeline initialized with HuggingFace embeddings ✅")
     rag.ingest([
         "my name is hashir"
-        "LangChain is a framework for developing applications powered by language models.",
-        "It provides modular components for building LLM applications.",
-        "You can use it to create chatbots, question-answering systems, and more."
+
         ])
     rag.save()
 

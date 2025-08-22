@@ -51,8 +51,9 @@ class ChatBot():
             filename: Optional[str] = None, ) -> list[str]:
         """Read document from path and return list of text chunks."""
         file_path = os.path.abspath(file_input) if isinstance(file_input, str) else file_input
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}") 
+        if isinstance(file_input,str):
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"File not found: {file_path}") 
         if filename:
             self.rag_pipeline.read(self.document_reader.read(file_path, filename))
         else:
@@ -120,7 +121,7 @@ if __name__ == "__main__":
     async def test_streaming():
         bot = ChatBot()
         print("Streaming result:")
-        async for token in bot.ask_stream("write me a story", session_id="test_session", k=3):
+        async for token in bot.ask_stream("hello", session_id="test_session", k=3):
             print(token, end="", flush=True)
         print()  # New line at end
     # Test direct LLM streaming (bypass agent)

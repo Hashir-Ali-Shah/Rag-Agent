@@ -36,7 +36,8 @@ class MathTools:
     @tool
     async def final_answer(answer: str) -> str:
         """Use this tool to give the final answer to the user. 
-        Always call this at the end instead of repeating other tools."""
+        Always call this at the end instead of repeating other tools.
+        make sure the answer is in a complete sentence. and not json format."""
         return answer
     
     @classmethod
