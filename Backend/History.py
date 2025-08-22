@@ -3,7 +3,7 @@ from langchain_core.messages import BaseMessage
 
 class BufferWindowMessageHistory(BaseChatMessageHistory):
     def __init__(self, k: int = 4):
-        # Initialize message list and window size
+     
         self.messages: list[BaseMessage] = []
         self.k = k
 

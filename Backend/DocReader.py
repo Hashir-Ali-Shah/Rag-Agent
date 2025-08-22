@@ -24,7 +24,7 @@ class DocumentReader:
     """
     
     def __init__(self):
-        # Dynamic supported extensions based on available libraries
+        
         self.supported_extensions = [".txt"]
         if PDF_AVAILABLE:
             self.supported_extensions.append(".pdf")
@@ -54,9 +54,7 @@ class DocumentReader:
             ValueError: If file type is unsupported or library unavailable
             Exception: For other reading errors
         """
-        # return self._read_from_file_object(file_input, filename, encoding)
-        
-        # Handle file path input
+
  
         if isinstance(file_input, (str, Path)):
             return self._read_from_path(str(file_input), encoding)
@@ -123,7 +121,7 @@ class DocumentReader:
         if not DOCX_AVAILABLE and ext == ".docx":
             raise ValueError("DOCX support requires python-docx library")
     
-    # Path-based reading methods (original)
+
     def _read_txt_from_path(self, path: Path, encoding: str) -> List[str]:
         """Read text file from path and split by double newlines."""
         try:
@@ -132,7 +130,7 @@ class DocumentReader:
                 texts = [p.strip() for p in content.split("\n\n") if p.strip()]
                 return texts if texts else [content.strip()] if content.strip() else []
         except UnicodeDecodeError:
-            # Fallback to different encodings
+       
             for fallback_encoding in ['latin-1', 'cp1252', 'utf-16']:
                 try:
                     with open(path, "r", encoding=fallback_encoding) as f:

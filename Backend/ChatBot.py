@@ -1,10 +1,10 @@
 import os
 from dotenv import load_dotenv
 import asyncio
-# Load variables from .env file
+
 load_dotenv()
 
-# Get your API key
+
 API_KEY = os.getenv("GROQ_API_KEY")
 
 
@@ -59,16 +59,15 @@ class ChatBot():
         else:
             self.rag_pipeline.read(self.document_reader.read(file_path))
 
-            # Use DocumentReader to read the file
         
 
     
     def pipeline_config(self):
         pipeline = RunnableWithMessageHistory(
-        runnable=RunnableLambda(self.rag_pipeline._retrieve_context) | self.executor,                  # your AgentExecutor
-        get_session_history=self.session.get_session,  # session-based memory factory
-        input_messages_key="question",           # matches prompt variable
-        history_messages_key="chat_history",     # matches placeholder in prompt
+        runnable=RunnableLambda(self.rag_pipeline._retrieve_context) | self.executor,            
+        get_session_history=self.session.get_session,  
+        input_messages_key="question",           
+        history_messages_key="chat_history",  
         history_factory_config=[
             ConfigurableFieldSpec(
                 id="session_id",
@@ -123,8 +122,7 @@ if __name__ == "__main__":
         print("Streaming result:")
         async for token in bot.ask_stream("hello", session_id="test_session", k=3):
             print(token, end="", flush=True)
-        print()  # New line at end
-    # Test direct LLM streaming (bypass agent)
+        print() 
     
     asyncio.run(test_streaming())
 

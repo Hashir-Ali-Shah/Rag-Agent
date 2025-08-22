@@ -14,14 +14,13 @@ class QueueCallbackHandler(AsyncCallbackHandler):
     async def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
         """Put new token in queue."""
    
-        if token:  # ignore empty tokens
-            # print(token, end="", flush=True)  # print token immediately
+        if token:  
             await self.queue.put(token)
 
     async def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         """Mark as done."""
         self._done = True
-        await self.queue.put(None)  # sentinel so consumer knows we're done
+        await self.queue.put(None) 
 
     async def on_llm_error(self, error: Exception, **kwargs: Any) -> None:
         """Mark as done on error."""
@@ -32,7 +31,7 @@ class QueueCallbackHandler(AsyncCallbackHandler):
         """Async generator that yields tokens as they arrive."""
         while True:
             token = await self.queue.get()
-            if token is None:  # sentinel
+            if token is None:  
                 break
             yield token
     def clear(self):

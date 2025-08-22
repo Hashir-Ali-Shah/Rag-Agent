@@ -1,7 +1,7 @@
 from History import BufferWindowMessageHistory
 
 class SessionMemoryManager:
-    session_memory_map = {}  # class-level
+    session_memory_map = {}  
 
     @staticmethod
     def get_session(session_id: str, k: int = 3):

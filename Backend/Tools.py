@@ -45,7 +45,7 @@ class MathTools:
         """Return all @tool-decorated callables from this class."""
         tools = []
         for name, member in inspect.getmembers(cls):
-            if isinstance(member, BaseTool):  # catches all LangChain tools
+            if isinstance(member, BaseTool):
                 tools.append(member)
         return tools
 
