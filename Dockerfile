@@ -1,27 +1,27 @@
+# Use slim Python image
 FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy dependency files first for caching
-COPY pyproject.toml poetry.lock* ./
+# Copy only requirements first for caching
+COPY requirements.txt .
 
-# Install system build tools, Poetry, and dependencies
+# Install system dependencies and Python packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
-        curl \
-        git \
-    && pip install --no-cache-dir poetry \
-    && poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi \
-    && apt-get remove -y build-essential \
+        gcc \
+        g++ \
+        libpq-dev \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apt-get remove -y build-essential gcc g++ \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy all code
+# Copy the rest of the project code
 COPY . .
 
-# Ensure working directory is root of backend
+# Set working directory to root (already /app)
 WORKDIR /app
 
 # Start the app
