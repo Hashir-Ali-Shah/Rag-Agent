@@ -1,21 +1,20 @@
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Copy dependency file
-COPY pyproject.toml .
+# Copy dependency files first for caching
+COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies using Poetry
+# Install Poetry and dependencies
 RUN pip install --no-cache-dir poetry \
     && poetry config virtualenvs.create false \
     && poetry install --no-interaction --no-ansi
 
-# Copy backend source code
-COPY backend/ ./backend/
+# Copy the rest of the code
+COPY . .
 
-# Set working directory to backend
-WORKDIR /app/backend
+# Set working directory to root of backend (already /app)
+WORKDIR /app
 
-# Run FastAPI
+# Start the app
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
