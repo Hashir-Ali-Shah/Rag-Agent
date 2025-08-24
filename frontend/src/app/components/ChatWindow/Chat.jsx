@@ -39,7 +39,7 @@ export default function Chat({ chat, updateMessages }) {
     });
 
     try {
-      const response = await fetch("http://localhost:8000/chat", {
+      const response = await fetch("https://rag-agent-3bps.onrender.com/chat", {
         method: "POST",
         body: formData,
       });
