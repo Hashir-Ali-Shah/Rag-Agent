@@ -23,6 +23,8 @@ COPY . .
 
 # Make sure we stay in /app
 WORKDIR /app
+ENV PYTHONPATH=/app
+
 
 # Start FastAPI with uvicorn (pointing to backend/main.py)
 CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"]
