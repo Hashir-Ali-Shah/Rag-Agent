@@ -1,10 +1,13 @@
 # Use slim Python image
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
+# Copy only requirements first (for caching)
 COPY requirements.txt .
 
+# Install system dependencies and Python packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         gcc \
@@ -15,9 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy the rest of the project code
 COPY . .
 
+# Make sure we stay in /app
 WORKDIR /app
 
-# Use Render's dynamic port
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
+# Start FastAPI with uvicorn (pointing to backend/main.py)
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"]
