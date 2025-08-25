@@ -18,12 +18,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the rest of the project code
-COPY . .
+# Copy only the backend folder contents to /app
+COPY backend/ .
 
-# Change working directory to backend
-WORKDIR /app/backend
-ENV PYTHONPATH=/app/backend
+# Verify main.py exists
+RUN ls -la main.py
 
-# Start FastAPI with uvicorn (now pointing directly to main.py)
+# Set environment variables
+ENV PYTHONPATH=/app
+
+# Start FastAPI with uvicorn
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
