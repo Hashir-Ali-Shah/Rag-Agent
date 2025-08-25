@@ -18,27 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only the backend folder contents to /app
-COPY backend/ .
-
-# Debug: Show what files were copied
-RUN echo "=== Files copied to /app ===" && ls -la
-
-# Debug: Show Python files specifically
-RUN echo "=== Python files ===" && find . -name "*.py" | head -10
-
-# Debug: Test ChatBot import during build
-RUN echo "=== Testing ChatBot import during build ===" && \
-    python -c "from ChatBot import ChatBot; print('ChatBot imported successfully')" || \
-    echo "FAILED: Could not import ChatBot"
-
-# Debug: Test main import during build  
-RUN echo "=== Testing main import during build ===" && \
-    python -c "import main; print('main imported successfully')" || \
-    echo "FAILED: Could not import main"
+# Copy Backend folder contents (note the capital B)
+COPY Backend/ .
 
 # Set environment variables
 ENV PYTHONPATH=/app
 
-# Start with debugging command that will show runtime info
-CMD ["sh", "-c", "echo 'Runtime Debug:' && ls -la && echo 'Testing Python imports:' && python -c 'import main; print(\"Imports OK\")' && echo 'Starting uvicorn...' && uvicorn main:app --host 0.0.0.0 --port $PORT --log-level debug"]
+# Start FastAPI with uvicorn
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
