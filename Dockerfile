@@ -21,10 +21,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy the rest of the project code
 COPY . .
 
-# Make sure we stay in /app
-WORKDIR /app
-ENV PYTHONPATH=/app
+# Change working directory to backend
+WORKDIR /app/backend
+ENV PYTHONPATH=/app/backend
 
-
-# Start FastAPI with uvicorn (pointing to backend/main.py)
-CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"]
+# Start FastAPI with uvicorn (now pointing directly to main.py)
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
