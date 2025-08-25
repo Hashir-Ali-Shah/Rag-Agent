@@ -21,11 +21,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy only the backend folder contents to /app
 COPY backend/ .
 
-# Verify main.py exists
-RUN ls -la main.py
+# Debug: Show what files exist
+RUN echo "=== Files in /app ===" && ls -la
+
+# Debug: Try to import main module
+RUN echo "=== Testing Python import ===" && python -c "import main; print('main.py imports successfully')" || echo "Failed to import main.py"
+
+# Debug: Check if app variable exists
+RUN echo "=== Testing app variable ===" && python -c "from main import app; print('app variable found:', type(app))" || echo "Failed to import app from main"
+
+# Debug: Show Python version and installed packages
+RUN echo "=== Python version ===" && python --version
+RUN echo "=== Installed packages ===" && pip list
 
 # Set environment variables
 ENV PYTHONPATH=/app
 
-# Start FastAPI with uvicorn
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
+# Create a test script to debug at runtime
+RUN echo '#!/bin/bash\necho "=== Runtime Debug ==="\necho "Current directory: $(pwd)"\necho "Files in directory:"\nls -la\necho "Python path:"\npython -c "import sys; print(sys.path)"\necho "Testing main import:"\npython -c "import main; print(\"main imported successfully\")" || echo "Failed to import main"\necho "Starting uvicorn..."\nuvicorn main:app --host 0.0.0.0 --port $PORT' > /app/debug_start.sh && chmod +x /app/debug_start.sh
+
+# Use the debug script instead of direct uvicorn
+CMD ["/app/debug_start.sh"]
