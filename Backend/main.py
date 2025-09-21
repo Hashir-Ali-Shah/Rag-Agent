@@ -8,7 +8,8 @@ import asyncio
 
 app = FastAPI()
 origins = [
-    "https://rag-agent-iota.vercel.app",  
+    "https://rag-agent-iota.vercel.app", 
+     "http://localhost:3000",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -67,15 +68,20 @@ async def chat_endpoint(
             print(f"[{chat_id}] Processing message for chat_id: {chat_id}")
             
 
-            buffer = ""
+            buffer=['"','-','*','—']
+            flush=False
             async for token in chatbot.ask_stream(message, session_id=chat_id, k=3):
+                if token in buffer:
+                    if flush:
+                        flush=False
+                        continue
+                    else:
+                        flush=True
+                     
+
+                yield token
                     
-                    buffer += token
-                    if token in {".", "!", "?", " "}:
-                        yield buffer
-                        buffer = ""
-            if buffer:  
-                    yield buffer
+  
     
    
         return StreamingResponse(
