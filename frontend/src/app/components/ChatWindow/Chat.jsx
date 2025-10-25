@@ -336,7 +336,7 @@ export default function Chat({ chat, updateMessages }) {
         </button>
         
         <textarea
-          className="flex-1 p-2 rounded-md border border-gray-300 resize-none overflow-hidden max-h-32 break-words whitespace-pre-wrap"
+          className="flex-1 p-2 rounded-md text-black border border-gray-300 resize-none overflow-hidden max-h-32 break-words whitespace-pre-wrap"
           rows={1}
           value={input}
           onChange={handleInput}
