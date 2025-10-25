@@ -3,6 +3,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.schema import Document
+from rank_bm25 import BM25Okapi
+from sentence_transformers import CrossEncoder
 import os
 
 from DocReader import DocumentReader
@@ -26,7 +28,8 @@ class RAGPipeline:
         # Setup text splitter
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap
+            chunk_overlap=chunk_overlap,
+            separators=["\n\n", "\n", ".", " ", ""]
         )
         self.document_reader = DocumentReader()
         self.vectorstore: FAISS | None = None
@@ -68,20 +71,63 @@ class RAGPipeline:
             path, self.embedding_model, allow_dangerous_deserialization=True
         )
 
-    def query(self, question: str, k: int = 3):
-        """Run similarity search over the vectorstore."""
+    def query(self, question: str, k: int = 3, initial_k: int = 20):
+        """Run hybrid search with reranking over the vectorstore.
+        
+        Pipeline:
+        1. Vector search to get initial candidates
+        2. BM25 search on those candidates
+        3. Cross-encoder reranking
+        
+        Args:
+            question: Query string
+            k: Final number of results to return
+            initial_k: Number of candidates to retrieve initially (should be > k)
+        
+        Returns:
+            List[Document]: List of Document objects with page_content attribute
+        """
         if not self.vectorstore:
             raise ValueError("Vectorstore not initialized. Run ingest() or load() first.")
-        return self.vectorstore.similarity_search(question, k=k)
+        
+        dense_results = self.vectorstore.similarity_search(question, k=initial_k)
+        
+        if not dense_results:
+            return []
+     
+        texts = [doc.page_content for doc in dense_results]
+        tokenized_corpus = [text.split(" ") for text in texts]
+        bm25 = BM25Okapi(tokenized_corpus)
+        tokenized_query = question.split(" ")
+        bm25_scores = bm25.get_scores(tokenized_query)
+        
+        scored_docs = [(doc, score) for doc, score in zip(dense_results, bm25_scores)]
+
+        scored_docs.sort(key=lambda x: x[1], reverse=True)
+        bm25_filtered_docs = [doc for doc, _ in scored_docs]
+     
+        if not hasattr(self, 'reranker'):
+            self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+        
+     
+        pairs = [[question, doc.page_content] for doc in bm25_filtered_docs]
+        rerank_scores = self.reranker.predict(pairs)
+        
+       
+        reranked_docs = [(doc, score) for doc, score in zip(bm25_filtered_docs, rerank_scores)]
+        reranked_docs.sort(key=lambda x: x[1], reverse=True)
+        
+ 
+        return [doc for doc, _ in reranked_docs[:k]]
 
     async def _retrieve_context(self, inputs: dict, k: int = 3) -> dict:
-        """For pipeline: takes {'question': str}, injects retrieved context."""
-        if not self.vectorstore:
-            self.load()
-        query = inputs["question"]
-        docs = self.query(query, k=k) if self.vectorstore else []
-        context = "\n".join(d.page_content for d in docs)
-        return {**inputs, "context": context}
+            """For pipeline: takes {'question': str}, injects retrieved context."""
+            if not self.vectorstore:
+                self.load()
+            query = inputs["question"]
+            docs = self.query(query, k=k) if self.vectorstore else []
+            context = "\n".join(d.page_content for d in docs)
+            return {**inputs, "context": context}
 
 
 if __name__ == "__main__":

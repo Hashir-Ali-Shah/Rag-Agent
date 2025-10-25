@@ -20,4 +20,10 @@ dependencies = [
     "sentence-transformers>=5.1.0",
     "uvicorn[standard]>=0.35.0",
     "websockets>=15.0.1",
+    "whisper>=1.1.10",
+    "soundfile>=0.13.1",
+    "rank-bm25>=0.2.2",
+    "librosa>=0.11.0",
+    "openai-whisper>=20250625",
+
 ]
