@@ -9,88 +9,59 @@ export default function Chat({ chat, updateMessages }) {
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-  const [audioStream, setAudioStream] = useState(null);
   const messageListRef = useRef(null);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const speechSynthesisRef = useRef(null);
-  const [usevoice, setUseVoice] = useState(false); 
-
-  const [recognition, setRecognition] = useState(null);
-
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognitionInstance = new SpeechRecognition();
-      recognitionInstance.continuous = true;
-      recognitionInstance.interimResults = true;
-      recognitionInstance.lang = 'en-US';
-      
-      recognitionInstance.onresult = (event) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
-        
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript;
-          } else {
-            interimTranscript += transcript;
-          }
-        }
-        
-        setInput(finalTranscript + interimTranscript);
-      };
-      
-      recognitionInstance.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        setIsRecording(false);
-        setIsProcessingVoice(false);
-      };
-      
-      recognitionInstance.onend = () => {
-        setIsRecording(false);
-        setIsProcessingVoice(false);
-      };
-      
-      setRecognition(recognitionInstance);
-    }
-
-    return () => {
-      if (audioStream) {
-        audioStream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
+  const wsRef = useRef(null);
+  const silenceTimerRef = useRef(null);
 
   const startVoiceRecording = async () => {
-    setUseVoice(true);
     try {
       setIsRecording(true);
-      setIsProcessingVoice(true);
+      setIsProcessingVoice(false);
       
-      if (recognition) {
-        recognition.start();
-      } else {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        setAudioStream(stream);
-        
-        mediaRecorderRef.current = new MediaRecorder(stream);
-        audioChunksRef.current = [];
-        
-        mediaRecorderRef.current.ondataavailable = (event) => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: 'audio/webm'
+      });
+      audioChunksRef.current = [];
+      
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
-        };
+        }
+      };
+      
+      mediaRecorderRef.current.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
         
-        mediaRecorderRef.current.onstop = async () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-          console.log('Audio recorded:', audioBlob);
+        if (audioChunksRef.current.length === 0) {
+          console.error('No audio data recorded');
+          setIsRecording(false);
           setIsProcessingVoice(false);
-        };
+          return;
+        }
         
-        mediaRecorderRef.current.start();
-      }
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log('Audio recorded, size:', audioBlob.size);
+        
+        setIsProcessingVoice(true);
+        await sendVoiceToWebSocket(audioBlob);
+      };
+      
+      mediaRecorderRef.current.start();
+      console.log('Recording started');
+      
+      // Auto-stop after 2 seconds of silence detection
+      // For simplicity, we'll just set a timer
+      silenceTimerRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          stopVoiceRecording();
+        }
+      }, 5000); // 5 seconds max recording
+      
     } catch (error) {
       console.error('Error starting voice recording:', error);
       setIsRecording(false);
@@ -99,44 +70,83 @@ export default function Chat({ chat, updateMessages }) {
   };
 
   const stopVoiceRecording = () => {
-    if (recognition) {
-      recognition.stop();
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
     }
     
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
-    }
-    
-    if (audioStream) {
-      audioStream.getTracks().forEach(track => track.stop());
-      setAudioStream(null);
+      console.log('Recording stopped');
     }
     
     setIsRecording(false);
   };
 
-  const speakText = (text) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1;
-      utterance.pitch = 1;
-      utterance.volume = 0.8;
-      
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(voice => 
-        voice.name.includes('Google') || 
-        voice.name.includes('Microsoft') ||
-        voice.lang.startsWith('en')
-      );
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
+  const sendVoiceToWebSocket = async (audioBlob) => {
+    return new Promise((resolve, reject) => {
+      try {
+        const ws = new WebSocket(`ws://127.0.0.1:8000/voice?chat_id=${chat.id}`);
+        wsRef.current = ws;
+        
+        ws.onopen = async () => {
+          console.log('WebSocket connected');
+          
+          // Send audio data as bytes
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          ws.send(arrayBuffer);
+          
+          // Wait 2 seconds then send break signal
+          setTimeout(() => {
+            ws.send('BREAK');
+            console.log('Break signal sent');
+          }, 2000);
+        };
+        
+        let aiResponse = "";
+        
+        ws.onmessage = (event) => {
+          console.log('Received from WebSocket:', event.data);
+          aiResponse += event.data;
+          
+          // Update messages in real-time
+          updateMessages(chat.id, (currentMessages) => {
+            const existingMessages = Array.isArray(currentMessages) ? currentMessages : [];
+            
+            // Check if we already have an assistant message being built
+            if (existingMessages.length > 0 && existingMessages[existingMessages.length - 1].type === "assistant") {
+              return existingMessages.map((msg, i, arr) => {
+                if (i === arr.length - 1) {
+                  return { ...msg, text: aiResponse };
+                }
+                return msg;
+              });
+            } else {
+              // Create new assistant message
+              return [...existingMessages, { id: Date.now(), type: "assistant", text: aiResponse }];
+            }
+          });
+        };
+        
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          setIsProcessingVoice(false);
+          reject(error);
+        };
+        
+        ws.onclose = () => {
+          console.log('WebSocket closed');
+          setIsProcessingVoice(false);
+          wsRef.current = null;
+          resolve();
+        };
+        
+      } catch (error) {
+        console.error('Error in WebSocket communication:', error);
+        setIsProcessingVoice(false);
+        reject(error);
       }
-      
-      speechSynthesisRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
-    }
+    });
   };
 
   const sendRequestHandler = async () => {
@@ -185,9 +195,6 @@ export default function Chat({ chat, updateMessages }) {
         
         if (done) {
           console.log(`[${chat.id}] Stream completed after ${chunkCount} chunks`);
-          if (aiResponse.trim() && usevoice) {
-            speakText(aiResponse);
-          }
           break;
         }
         
@@ -218,13 +225,10 @@ export default function Chat({ chat, updateMessages }) {
           return msg;
         })
       );
-      
-      speakText(errorMessage);
     } finally {
       setLoading(false);
       setInput("");
       setUploadedFiles([]);
-      setUseVoice(false); 
     }
   };
 
@@ -253,17 +257,23 @@ export default function Chat({ chat, updateMessages }) {
     setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const stopSpeaking = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-  };
-
   useEffect(() => {
     if (messageListRef.current) {
       messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
     }
   }, [chat.messages]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white">
@@ -282,19 +292,18 @@ export default function Chat({ chat, updateMessages }) {
                 msg.type === "user" ? "self-end bg-green-100 text-black" : "self-start bg-gray-100 text-black"
               }`}
             >
-              {msg.text || (loading && msg.type === "assistant" ? <div className="w-60 h-10 bg-gray-400 rounded animate-pulse"></div>
- : "")}
+              {msg.text || (loading && msg.type === "assistant" ? <div className="w-60 h-10 bg-gray-400 rounded animate-pulse"></div> : "")}
             </div>
           ))
         )}
       </div>
 
-      {isRecording && (
+      {(isRecording || isProcessingVoice) && (
         <div className="mx-4 mb-2 p-3 bg-red-50 border border-red-200 rounded-md">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
             <span className="text-red-700 font-medium">
-              {isProcessingVoice ? "Listening... Click stop when done" : "Recording..."}
+              {isRecording ? "Recording... Click stop when done" : "Processing voice..."}
             </span>
           </div>
         </div>
@@ -321,7 +330,7 @@ export default function Chat({ chat, updateMessages }) {
         
         <button 
           onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-          disabled={loading}
+          disabled={loading || isProcessingVoice}
           className={`flex-shrink-0 p-2 rounded-full transition-colors ${
             isRecording 
               ? "bg-red-500 hover:bg-red-600" 
@@ -341,20 +350,12 @@ export default function Chat({ chat, updateMessages }) {
           value={input}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder={isRecording ? "Listening..." : "Type a message or use voice..."}
-          disabled={loading || isRecording}
+          placeholder={isRecording ? "Recording..." : isProcessingVoice ? "Processing..." : "Type a message or use voice..."}
+          disabled={loading || isRecording || isProcessingVoice}
         />
         
-        <button disabled={loading} onClick={sendRequestHandler} className="flex-shrink-0 p-2 rounded-full bg-blue-500 hover:bg-blue-600 disabled:opacity-50">
+        <button disabled={loading || isProcessingVoice} onClick={sendRequestHandler} className="flex-shrink-0 p-2 rounded-full bg-blue-500 hover:bg-blue-600 disabled:opacity-50">
           <PaperAirplaneIcon className="h-5 w-5 rotate-315 text-white" />
-        </button>
-        
-        <button 
-          onClick={stopSpeaking}
-          className="flex-shrink-0 p-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-xs px-3"
-          title="Stop speaking"
-        >
-          Stop
         </button>
       </div>
     </div>
